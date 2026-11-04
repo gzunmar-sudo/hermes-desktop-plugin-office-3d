@@ -747,12 +747,23 @@ function deskSlot(index, cols) {
 }
 
 function loungeSlot(index, total, lounge) {
-  const t = total > 0 ? total : 1
-  const angle = (index / t) * Math.PI * 2
-  const r = 1.7
+  // Ajuste local (Germán): the ring around the table holds at most 6 stools;
+  // any extra idle bots sit in a small grid to the right of the group, so a
+  // fully idle office doesn't pile everyone on top of each other.
+  const RING = 6
+  if (index < RING) {
+    const t = Math.min(total > 0 ? total : 1, RING)
+    const angle = (index / t) * Math.PI * 2
+    const r = 1.7
+    return {
+      x: lounge.x + 2.0 + Math.cos(angle) * r,
+      y: lounge.y + 1.6 + Math.sin(angle) * r,
+    }
+  }
+  const k = index - RING
   return {
-    x: lounge.x + 2.0 + Math.cos(angle) * r,
-    y: lounge.y + 1.6 + Math.sin(angle) * r,
+    x: lounge.x + 5.4 + Math.floor(k / 3) * 1.5,
+    y: lounge.y + 0.2 + (k % 3) * 1.5,
   }
 }
 
@@ -1034,11 +1045,13 @@ function drawFrame(canvas, c, entries, tSec, selectedIndex, view) {
   const lounged = entries
     .map((entry, i) => ({ entry, i }))
     .filter(({ entry }) => entry.online && !entry.busy)
-  lounged.forEach(({ entry, i }, idx) => {
-    const slot = loungeSlot(idx, lounged.length, L.lounge)
-    drawLoungeAvatar(c, ox, oy, scale, slot, entry, i, tSec, idx,
-      { stroke, textSec, textTer, accent, P })
-  })
+  lounged
+    .map(({ entry, i }, idx) => ({ entry, i, idx, slot: loungeSlot(idx, lounged.length, L.lounge) }))
+    .sort((a, b) => (a.slot.x + a.slot.y) - (b.slot.x + b.slot.y)) // back to front
+    .forEach(({ entry, i, idx, slot }) => {
+      drawLoungeAvatar(c, ox, oy, scale, slot, entry, i, tSec, idx,
+        { stroke, textSec, textTer, accent, P })
+    })
 
   // -------------------------------------------------------------------------
   // (Aggregate stats now render as DOM chips below the canvas — see
