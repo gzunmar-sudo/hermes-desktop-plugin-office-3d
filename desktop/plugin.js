@@ -85,6 +85,16 @@ function hexToRgb(hex) {
   return { r, g, b }
 }
 
+// Ajuste local (Germán): playera = color de la carita de cada bot en el menú Bots.
+const BOT_COLORS = {
+  default: '#b8c0f8', apolo: '#00b0e0', hefesto: '#008888', electro: '#3078e0',
+  theo: '#d878b8', ada: '#a088f0', iris: '#2c4a54', atlas: '#c85020',
+  maia: '#e0c8c8', kai: '#0088a0',
+}
+function botColor(profile) {
+  return BOT_COLORS[profile] || profileColor(profile)
+}
+
 function shade(hex, amount) {
   // amount: -1..1 ; negative darkens, positive lightens
   const rgb = hexToRgb(hex)
@@ -1427,7 +1437,7 @@ function drawDeskAndAvatar(c, ox, oy, scale, slot, entry, index, tSec, palette) 
   const online = !!entry.online
   const busy = !!entry.busy
   const alpha = online ? 1 : 0.45
-  const pcolor = profileColor(entry.profile) || accent
+  const pcolor = botColor(entry.profile) || accent
   const S = deskLayout(slot)
 
   c.save()
@@ -1695,7 +1705,7 @@ function drawLoungeAvatar(c, ox, oy, scale, slot, entry, index, tSec, idx, palet
   const { stroke, textSec, textTer, accent, P } = palette
   const online = !!entry.online
   const alpha = online ? 1 : 0.35
-  const pcolor = profileColor(entry.profile) || accent
+  const pcolor = botColor(entry.profile) || accent
   const pose = loungePose(slot, entry.profile, online ? tSec : 0)
   const project = p => screenPt(ox,oy,...p,scale)
 
@@ -2320,7 +2330,7 @@ function OfficeMetric({ label, value, tone }) {
 }
 
 function OfficeDetailPanel({ entry, onClose }) {
-  const pcolor = profileColor(entry.profile) || '#888'
+  const pcolor = botColor(entry.profile) || '#888'
   const state = entry.busy ? 'busy' : entry.online ? 'idle' : 'offline'
   const [sessionId, setSessionId] = useState(null)
 
@@ -2437,7 +2447,7 @@ function OfficeLeaderboard({ entries, selectedProfile, onSelect }) {
         }),
         jsx('span', {
           className: 'inline-block h-2 w-2 rounded-full shrink-0',
-          style: { backgroundColor: profileColor(entry.profile) || '#888' },
+          style: { backgroundColor: botColor(entry.profile) || '#888' },
         }),
         jsx('span', {
           className: 'flex-1 min-w-0 truncate text-xs text-[var(--ui-text-secondary)]',
