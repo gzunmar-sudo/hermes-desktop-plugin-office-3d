@@ -106,6 +106,19 @@ function rgba(hex, a) {
 // Darken a profile-hued name ink in LIGHT mode so it stays legible on the
 // near-white pill (P.pillColor). In DARK mode the raw profile color is
 // already legible on the dark pill, so pass it through unchanged.
+// Human-facing display names. `entry.profile` stays the key everywhere else
+// (colors, chat routing, selection); only rendered text goes through here.
+const DISPLAY_NAMES = {
+  default: 'Hermes', ada: 'Ada', apolo: 'Apolo', atlas: 'Atlas', electro: 'Electro',
+  hefesto: 'Hefesto', iris: 'Iris', kai: 'Kai', maia: 'Maia', theo: 'Theo',
+}
+function displayName(profile) {
+  const key = String(profile ?? '')
+  return DISPLAY_NAMES[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : key)
+}
+// Profiles drawn with long hair.
+const FEMALE_PROFILES = new Set(['default', 'ada', 'maia', 'iris'])
+
 function nameInk(pcolor, P) {
   return P && P.mode === 'light' ? shade(pcolor, -0.45) : pcolor
 }
@@ -546,6 +559,24 @@ function drawHead(c,cx,cy,r,opts) {
   const face=opts.face!==false&&fy>FACE_TV_MIN
   const pt=(x,y)=>[cx+x*r,cy+y*r], poly=(a,ink)=>figurePoly(c,a.map(p=>pt(...p)),ink)
   const skull=[[-.65,-.88],[.24,-1],[.77,-.66],[.94,-.12],[.78,.54],[.38,.92],[-.20,1],[-.72,.63],[-.93,.03],[-.87,-.48]]
+  if(opts.longHair){
+    // Long hair paints BEFORE the skull so the face stays in front. Seen from
+    // behind (desk) it is one panel over the back; from the front (lounge) it
+    // is two side locks framing the face, leaving the neck and chest clear.
+    const back=shade(opts.hair,-.10)
+    if(face){
+      poly([[-.93,-.30],[-1.08,.45],[-1.14,1.25],[-1.00,1.85],[-.62,1.72],[-.52,1.05],[-.60,.62],[-.80,.20]],back)
+      poly([[.94,-.30],[1.08,.45],[1.12,1.25],[.98,1.85],[.62,1.72],[.52,1.05],[.60,.62],[.80,.20]],back)
+      poly([[-.93,-.30],[-1.08,.45],[-1.14,1.25],[-1.00,1.85],[-.88,1.20],[-.82,.40]],opts.hairLit)
+    }else{
+      // Back view: hair falls just past the nape and tapers into soft
+      // points, so it reads as long hair, not a dark sheet over the back.
+      // The face side (right) stays clear below the cheek, or the hair reads
+      // as a beard; the hair hangs only behind the head and on the left.
+      poly([[-.90,-.10],[-.98,.50],[-.88,1.05],[-.62,1.45],[-.30,1.30],[-.05,1.52],[.22,1.30],[.38,1.05],[.50,.80],[.40,.40]],back)
+      poly([[-.90,-.10],[-.98,.50],[-.88,1.05],[-.62,1.45],[-.52,.95],[-.62,.30]],opts.hairLit)
+    }
+  }
   poly(skull,opts.hair)
   poly([[-.65,-.88],[.24,-1],[.77,-.66],[.13,-.42],[-.87,-.48]],opts.hairLit)
   if(face){
@@ -1611,6 +1642,7 @@ function drawDeskAndAvatar(c, ox, oy, scale, slot, entry, index, tSec, palette) 
       hair: P.hair,
       hairLit: P.hairLit,
       facing: DESK_FACING,
+      longHair: FEMALE_PROFILES.has(entry.profile),
       blink,
     })
 
@@ -1621,7 +1653,7 @@ function drawDeskAndAvatar(c, ox, oy, scale, slot, entry, index, tSec, palette) 
     const nameFontPx = 10
     c.font = nameFontPx + 'px system-ui, -apple-system, "Segoe UI", sans-serif'
     c.textAlign = 'center'
-    drawNameBadge(c, entry.profile, hx, hy - headR - 6, {
+    drawNameBadge(c, displayName(entry.profile), hx, hy - headR - 6, {
       fontPx: nameFontPx,
       textColor: nameInk(pcolor, P),
       borderColor: P.pillBorder,
@@ -1645,7 +1677,7 @@ function drawDeskAndAvatar(c, ox, oy, scale, slot, entry, index, tSec, palette) 
     c.globalAlpha = 1
     c.font = deskNameFontPx + 'px system-ui, -apple-system, "Segoe UI", sans-serif'
     c.textAlign = 'center'
-    drawNameBadge(c, entry.profile, ox + dnx, oy + dny, {
+    drawNameBadge(c, displayName(entry.profile), ox + dnx, oy + dny, {
       fontPx: deskNameFontPx,
       textColor: online ? nameInk(pcolor, P) : P.offlineNameColor,
       borderColor: P.pillBorder,
@@ -1702,6 +1734,7 @@ function drawLoungeAvatar(c, ox, oy, scale, slot, entry, index, tSec, idx, palet
     hair: P.hair,
     hairLit: P.hairLit,
     facing: LOUNGE_FACING,
+    longHair: FEMALE_PROFILES.has(entry.profile),
     blink,
   })
 
@@ -1726,7 +1759,7 @@ function drawLoungeAvatar(c, ox, oy, scale, slot, entry, index, tSec, idx, palet
   c.globalAlpha = 1
   c.font = nameFontPx + 'px system-ui, -apple-system, "Segoe UI", sans-serif'
   c.textAlign = 'center'
-  drawNameBadge(c, entry.profile, ox + nhx, nameY, {
+  drawNameBadge(c, displayName(entry.profile), ox + nhx, nameY, {
     fontPx: nameFontPx,
     textColor: nameInk(pcolor, P),
     borderColor: P.pillBorder,
@@ -2334,7 +2367,7 @@ function OfficeDetailPanel({ entry, onClose }) {
           }),
           jsx('span', {
             className: 'min-w-0 max-w-full text-sm font-semibold text-[var(--ui-text-secondary)] truncate',
-            children: entry.profile,
+            children: displayName(entry.profile),
           }),
           jsx('span', {
             className: 'text-xs text-[var(--ui-text-tertiary)]',
@@ -2408,7 +2441,7 @@ function OfficeLeaderboard({ entries, selectedProfile, onSelect }) {
         }),
         jsx('span', {
           className: 'flex-1 min-w-0 truncate text-xs text-[var(--ui-text-secondary)]',
-          children: entry.profile,
+          children: displayName(entry.profile),
         }),
         jsx('span', {
           className: 'text-xs font-semibold tabular-nums text-[var(--ui-text-secondary)]',
@@ -2522,7 +2555,7 @@ function OfficePage({ ctx, prefs }) {
               className: 'min-w-0 w-full flex flex-col gap-2',
               children: [
                 selectedEntry && selectedIndex < 0
-                  ? jsx('p', { className: 'text-xs text-[var(--ui-text-tertiary)]', children: selectedEntry.profile + ' is hidden from the scene/list. Details remain selected.' })
+                  ? jsx('p', { className: 'text-xs text-[var(--ui-text-tertiary)]', children: displayName(selectedEntry.profile) + ' is hidden from the scene/list. Details remain selected.' })
                   : null,
                 selectedEntry
                   ? jsx(OfficeDetailPanel, { key: selectedEntry.profile, entry: selectedEntry, onClose: () => setSelectedProfile(null) })

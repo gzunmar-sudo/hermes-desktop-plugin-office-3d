@@ -65,7 +65,7 @@ def _discover_profiles() -> List[str]:
         order.extend(
             sorted(
                 d for d in os.listdir(prof_dir)
-                if os.path.isdir(os.path.join(prof_dir, d))
+                if os.path.isdir(os.path.join(prof_dir, d)) and not d.startswith(".")
             )
         )
     except OSError:
@@ -101,7 +101,12 @@ def _pid_alive(pid: Any) -> bool:
 def _state_path(profile: str) -> str:
     if profile == "default":
         return os.path.join(HERMES_HOME, "gateway_state.json")
-    return os.path.join(HERMES_HOME, "profiles", profile, "gateway_state.json")
+    p = os.path.join(HERMES_HOME, "profiles", profile, "gateway_state.json")
+    # Ajuste local (Germán): los bots corren dentro del gateway raíz (bot mode),
+    # sin gateway_state.json propio; usar el del gateway raíz para su liveness.
+    if not os.path.exists(p):
+        return os.path.join(HERMES_HOME, "gateway_state.json")
+    return p
 
 
 def _db_path(profile: str) -> str:
