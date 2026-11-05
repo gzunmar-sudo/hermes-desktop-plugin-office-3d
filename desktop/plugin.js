@@ -95,6 +95,8 @@ function botColor(profile) {
   return BOT_COLORS[profile] || profileColor(profile)
 }
 
+const STATE_ES = { busy: 'trabajando', idle: 'libre', offline: 'desconectado' }
+
 function shade(hex, amount) {
   // amount: -1..1 ; negative darkens, positive lightens
   const rgb = hexToRgb(hex)
@@ -140,12 +142,12 @@ function nameInk(pcolor, P) {
 function formatIdle(elapsedMs) {
   if (!Number.isFinite(elapsedMs) || elapsedMs < 0) elapsedMs = 0
   const totalSec = Math.floor(elapsedMs / 1000)
-  if (totalSec < 60) return 'idle ' + totalSec + 's'
+  if (totalSec < 60) return 'libre ' + totalSec + 's'
   const totalMin = Math.floor(totalSec / 60)
-  if (totalMin < 60) return 'idle ' + totalMin + 'm'
+  if (totalMin < 60) return 'libre ' + totalMin + 'm'
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
-  return 'idle ' + h + 'h' + m + 'm'
+  return 'libre ' + h + 'h' + m + 'm'
 }
 
 // Format a large token count compactly: 1234 -> "1.2k", 1_500_000 -> "1.5M",
@@ -1011,11 +1013,11 @@ function drawFrame(canvas, c, entries, tSec, selectedIndex, view) {
   c.textAlign = 'right'
   {
     const [lx, ly] = iso(L.worldW, L.workH, 0, scale)
-    c.fillText('WORK', ox + lx + 24, oy + ly - 22)
+    c.fillText('TRABAJO', ox + lx + 24, oy + ly - 22)
   }
   {
     const [lx, ly] = iso(L.worldW, L.loungeY0 + LOUNGE_DEPTH, 0, scale)
-    c.fillText('LOUNGE', ox + lx + 24, oy + ly - 22)
+    c.fillText('DESCANSO', ox + lx + 24, oy + ly - 22)
   }
   c.textAlign = 'start'
 
@@ -1129,9 +1131,9 @@ function drawStatusBar(c, cssW, cssH, barH, entries, palette) {
   }
 
   // Left cluster: online / busy / sessions / tokens.
-  metric(String(online), 'online', accent)
-  metric(String(busy), 'busy', busy > 0 ? '#39ff88' : textTer)
-  metric(String(sessions), 'active', textSec)
+  metric(String(online), 'en línea', accent)
+  metric(String(busy), 'trabajando', busy > 0 ? '#39ff88' : textTer)
+  metric(String(sessions), 'activas', textSec)
   // tokens is the last left metric — no trailing separator, so draw manually.
   c.font = valFont
   c.fillStyle = textSec
@@ -1147,8 +1149,8 @@ function drawStatusBar(c, cssW, cssH, barH, entries, palette) {
   // agents
   c.font = labFont
   c.fillStyle = textTer
-  c.fillText('agents', rx, cy)
-  rx -= c.measureText('agents').width + 4
+  c.fillText('agentes', rx, cy)
+  rx -= c.measureText('agentes').width + 4
   c.font = valFont
   c.fillStyle = textSec
   c.fillText(String(agents), rx, cy)
@@ -2040,7 +2042,7 @@ function OfficeCanvas({ entries, selectedIndex, onPick }) {
         onPointerCancel: endDrag,
         onDoubleClick: resetView,
         style: { touchAction: 'none' },
-        title: 'Click a desk to inspect · ⌘/Ctrl + scroll to zoom · drag to pan · double-click to fit',
+        title: 'Clic en un escritorio para ver detalles · ⌘/Ctrl + rueda para zoom · arrastra para moverte · doble clic para ajustar',
         className: cn(
           'block w-full h-full rounded-md border border-[var(--ui-stroke-secondary)]',
           onPick ? (dragging ? 'cursor-grabbing' : 'cursor-grab') : '',
@@ -2055,21 +2057,21 @@ function OfficeCanvas({ entries, selectedIndex, onPick }) {
           jsx('button', {
             type: 'button',
             className: btn,
-            title: 'Zoom out',
+            title: 'Alejar',
             onClick: () => applyZoom(view.zoom / 1.3),
             children: '\u2212',
           }),
           jsx('button', {
             type: 'button',
             className: cn(btn, 'min-w-[3.4rem] text-center font-medium tabular-nums'),
-            title: 'Back to fit (100%)',
+            title: 'Ajustar a la vista (100%)',
             onClick: resetView,
             children: zoomPct + '%',
           }),
           jsx('button', {
             type: 'button',
             className: btn,
-            title: 'Zoom in',
+            title: 'Acercar',
             onClick: () => applyZoom(view.zoom * 1.3),
             children: '+',
           }),
@@ -2080,7 +2082,7 @@ function OfficeCanvas({ entries, selectedIndex, onPick }) {
             className:
               'absolute left-2 bottom-2 pointer-events-none text-[10px] ' +
               'text-[var(--ui-text-tertiary)]',
-            children: '\u2318/Ctrl + scroll to zoom \u00b7 drag to pan',
+            children: '\u2318/Ctrl + rueda para zoom \u00b7 arrastra para moverte',
           })
         : null,
     ],
@@ -2141,9 +2143,9 @@ function OfficeSettingsPage({ prefs, update }) {
     className: 'flex flex-col',
     children: [
       jsx(ListRow, {
-        title: 'Refresh interval',
+        title: 'Intervalo de actualización',
         description:
-          'How often the office asks the backend for profile state. The canvas animates continuously; this only controls the data poll.',
+          'Cada cuánto la oficina consulta el estado de los bots. La animación es continua; esto solo controla la consulta de datos.',
         action: jsx(SegmentedControl, {
           value: String(pollSeconds),
           onChange: (value) => update({ pollSeconds: Number(value) }),
@@ -2152,16 +2154,16 @@ function OfficeSettingsPage({ prefs, update }) {
       }),
       jsx(ToggleRow, {
         checked: hideOffline,
-        label: 'Hide offline profiles',
+        label: 'Ocultar bots desconectados',
         description:
-          'Draw only profiles that are online, so the office shows what is actually running.',
+          'Muestra solo los bots en línea, para ver lo que de verdad está corriendo.',
         onChange: (on) => update({ hideOffline: on }),
       }),
       jsx(ToggleRow, {
         checked: notifyOnChange,
-        label: 'Notify when a profile changes state',
+        label: 'Avisar cuando un bot cambie de estado',
         description:
-          'A desktop toast when a profile goes busy, idle or offline. The status-bar chip is the poller, so keep it enabled for this to fire.',
+          'Un aviso en pantalla cuando un bot pasa a trabajando, libre o desconectado. Funciona solo si el indicador de la barra de estado está activo.',
         onChange: (on) => update({ notifyOnChange: on }),
       }),
     ],
@@ -2204,8 +2206,8 @@ function OfficeStatusChip({ ctx, prefs }) {
         host.notify({
           kind: 'info',
           title: 'Office 3D',
-          message: profile + ' is now ' + state,
-          action: { label: 'Open office', onClick: () => host.navigate(OFFICE_PATH) },
+          message: displayName(profile) + ' ahora está ' + (STATE_ES[state] || state),
+          action: { label: 'Abrir oficina', onClick: () => host.navigate(OFFICE_PATH) },
         })
       }
     }
@@ -2215,13 +2217,13 @@ function OfficeStatusChip({ ctx, prefs }) {
   const label = !hasData
     ? '—'
     : stats.busy > 0
-      ? stats.busy + ' busy'
-      : stats.online + ' online'
+      ? stats.busy + ' trabajando'
+      : stats.online + ' en línea'
 
   return jsx(Tip, {
     label:
-      'Office 3D — ' + stats.online + ' online · ' + stats.busy + ' busy · ' +
-      stats.sessions + ' active session' + (stats.sessions === 1 ? '' : 's'),
+      'Office 3D — ' + stats.online + ' en línea · ' + stats.busy + ' trabajando · ' +
+      stats.sessions + ' sesi' + (stats.sessions === 1 ? 'ón activa' : 'ones activas'),
     children: jsxs('button', {
       type: 'button',
       onClick: () => host.navigate(OFFICE_PATH),
@@ -2260,13 +2262,13 @@ function officeView(entries, hideOffline, selectedProfile) {
 function OfficeOverview({ entries }) {
   const stats = profileOverview(entries)
   return jsxs('section', {
-    'aria-label': 'Global profile overview',
+    'aria-label': 'Resumen general de bots',
     'data-office-overview': true,
     className: 'flex flex-col gap-2',
     children: [
       jsx('div', {
         className: 'grid grid-cols-2 sm:grid-cols-4 gap-2',
-        children: [['total', 'Total'], ['working', 'Working'], ['idle', 'Idle'], ['offline', 'Offline']].map(([key, label]) =>
+        children: [['total', 'Total'], ['working', 'Trabajando'], ['idle', 'Libres'], ['offline', 'Desconectados']].map(([key, label]) =>
           jsxs('div', {
             className: 'flex items-baseline gap-2 px-3 py-2 rounded-md border border-[var(--ui-stroke-secondary)]',
             children: [
@@ -2277,7 +2279,7 @@ function OfficeOverview({ entries }) {
       }),
       jsx('p', {
         className: 'text-xs text-[var(--ui-text-tertiary)]',
-        children: 'All profiles · Working = online with recent session activity · Idle = online, not working · Offline = not online.',
+        children: 'Todos los bots · Trabajando = en línea con actividad reciente · Libre = en línea, sin trabajar · Desconectado = fuera de línea.',
       }),
     ],
   })
@@ -2293,7 +2295,7 @@ function openProfileChat(profile) {
   try {
     host.newChat(profile)
   } catch (err) {
-    host.notifyError(err, 'Could not open ' + profile + "'s chat")
+    host.notifyError(err, 'No se pudo abrir el chat de ' + displayName(profile))
   }
 }
 
@@ -2320,7 +2322,7 @@ async function resolveLatestSession(profile) {
 
 function openStoredSession(profile, sessionId) {
   Promise.resolve(host.openSession(sessionId, { profile })).catch((err) =>
-    host.notifyError(err, 'Could not open that session'),
+    host.notifyError(err, 'No se pudo abrir esa sesión'),
   )
 }
 
@@ -2394,41 +2396,41 @@ function OfficeDetailPanel({ entry, onClose }) {
           }),
           jsx('span', {
             className: 'text-xs text-[var(--ui-text-tertiary)]',
-            children: idle ? '· ' + state + ' · ' + idle : '· ' + state,
+            children: idle ? '· ' + STATE_ES[state] + ' · ' + idle : '· ' + STATE_ES[state],
           }),
           jsx('span', { className: 'flex-1' }),
           jsx('button', {
             type: 'button',
             onClick: onClose,
-            title: 'Close',
-            'aria-label': 'Close profile details',
+            title: 'Cerrar',
+            'aria-label': 'Cerrar detalles del bot',
             className: 'text-xs text-[var(--ui-text-tertiary)] hover:text-[var(--ui-text-secondary)]',
             children: '✕',
           }),
         ],
       }),
-      jsx(OfficeMetric, { label: 'Sessions active in last 90s', value: String(entry.active_sessions | 0) }),
-      jsx(OfficeMetric, { label: 'Unended recorded sessions', value: String(entry.open_sessions | 0) }),
-      jsx(OfficeMetric, { label: 'Gateway-reported agents', value: String(entry.active_agents | 0) }),
-      jsx(OfficeMetric, { label: 'Recorded-session tokens', value: formatCompact(Number(entry.tokens_total) || 0) }),
+      jsx(OfficeMetric, { label: 'Sesiones activas en los últimos 90 s', value: String(entry.active_sessions | 0) }),
+      jsx(OfficeMetric, { label: 'Sesiones guardadas sin cerrar', value: String(entry.open_sessions | 0) }),
+      jsx(OfficeMetric, { label: 'Agentes reportados por el gateway', value: String(entry.active_agents | 0) }),
+      jsx(OfficeMetric, { label: 'Tokens de sesiones guardadas', value: formatCompact(Number(entry.tokens_total) || 0) }),
       jsx(OfficeMetric, {
-        label: 'Recorded-session cost',
+        label: 'Costo de sesiones guardadas',
         value: '$' + (Number(entry.cost_total) || 0).toFixed(2),
         tone: Number(entry.cost_total) > 0 ? '#ffd479' : undefined,
       }),
       jsxs('div', {
         className: 'flex flex-wrap gap-2 pt-0.5',
         children: [
-          button('Open chat', () => openProfileChat(entry.profile), true),
+          button('Abrir chat', () => openProfileChat(entry.profile), true),
           sessionId
-            ? button('Open latest session', () => openStoredSession(entry.profile, sessionId))
+            ? button('Abrir última sesión', () => openStoredSession(entry.profile, sessionId))
             : null,
         ],
       }),
       jsx('div', {
         className: 'text-[10px] leading-snug text-[var(--ui-text-tertiary)]',
         children:
-          'Usage sums all recorded sessions in this profile’s state.db, not today or this visit. Tokens = input + output; cost = actual USD, falling back to estimated. Missing or unreadable data returns zero. Recent activity does not necessarily mean a running task; unended sessions may be stale. Agents are gateway-reported, not live desktop chats.',
+          'El uso suma todas las sesiones guardadas de este bot (state.db), no solo hoy. Tokens = entrada + salida; costo = USD real o estimado. Si faltan datos, marca cero. Actividad reciente no siempre significa que esté corriendo ahora.',
       }),
     ],
   })
@@ -2483,14 +2485,14 @@ function OfficeLeaderboard({ entries, selectedProfile, onSelect }) {
         children: [
           jsx('span', {
             className: 'text-xs font-semibold text-[var(--ui-text-secondary)]',
-            children: 'Recorded-session usage',
+            children: 'Uso de sesiones guardadas',
           }),
           jsx(SegmentedControl, {
             value: metric,
             onChange: (value) => setMetric(value === 'cost' ? 'cost' : 'tokens'),
             options: [
               { id: 'tokens', label: 'tokens' },
-              { id: 'cost', label: 'cost' },
+              { id: 'cost', label: 'costo' },
             ],
           }),
         ],
@@ -2499,11 +2501,11 @@ function OfficeLeaderboard({ entries, selectedProfile, onSelect }) {
         ? jsx('div', { className: 'flex flex-col gap-0.5 max-h-[360px] overflow-y-auto min-w-0', children: body })
         : jsx('div', {
             className: 'text-xs text-[var(--ui-text-tertiary)]',
-            children: 'No profiles to rank yet.',
+            children: 'Todavía no hay bots para ordenar.',
           }),
       jsx('div', {
         className: 'text-[10px] leading-snug text-[var(--ui-text-tertiary)]',
-        children: 'Visible profiles only · All recorded sessions (not today). Cost uses actual USD or estimated fallback. Click a profile to inspect.',
+        children: 'Solo bots visibles · Todas las sesiones guardadas (no solo hoy). El costo es en USD real o estimado. Clic en un bot para ver detalles.',
       }),
     ],
   })
@@ -2546,15 +2548,15 @@ function OfficePage({ ctx, prefs }) {
     })
   } else if (query.isError) {
     body = jsx(ErrorState, {
-      title: 'Could not load office state',
-      description: String(query.error && query.error.message ? query.error.message : query.error || 'unknown error'),
+      title: 'No se pudo cargar el estado de la oficina',
+      description: String(query.error && query.error.message ? query.error.message : query.error || 'error desconocido'),
     })
   } else {
     const { all, visible: entries, selected: selectedEntry, selectedIndex } = officeView(query.data, hideOffline, selectedProfile)
     const empty = all.length === 0
-      ? jsx(EmptyState, { title: 'No profiles found', description: 'The backend returned no profiles.' })
+      ? jsx(EmptyState, { title: 'No se encontraron bots', description: 'El servidor no devolvió ningún bot.' })
       : entries.length === 0
-        ? jsx(EmptyState, { title: 'Every profile is offline', description: 'Offline profiles are hidden. Turn off "Hide offline profiles" in Settings to see their desks and usage.' })
+        ? jsx(EmptyState, { title: 'Todos los bots están desconectados', description: 'Los bots desconectados están ocultos. Desactiva "Ocultar bots desconectados" en Ajustes para ver sus escritorios y su uso.' })
         : null
     body = jsxs('div', {
       className: 'flex flex-col gap-3 min-w-0',
@@ -2563,7 +2565,7 @@ function OfficePage({ ctx, prefs }) {
         jsx('p', {
           className: 'text-xs text-[var(--ui-text-tertiary)]',
           'data-office-filter': true,
-          children: 'Showing ' + entries.length + ' of ' + all.length + ' profiles in scene and usage list' + (hideOffline ? ' · Offline hidden' : ' · Offline included'),
+          children: 'Mostrando ' + entries.length + ' de ' + all.length + ' bots en la oficina y la lista de uso' + (hideOffline ? ' · Desconectados ocultos' : ' · Desconectados incluidos'),
         }),
         jsxs('div', {
           className: 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] items-start gap-3 min-w-0',
@@ -2574,7 +2576,7 @@ function OfficePage({ ctx, prefs }) {
               children: empty || jsx(OfficeCanvas, { entries, selectedIndex, onPick: pick }),
             }),
             jsxs('aside', {
-              'aria-label': 'Profile usage and details',
+              'aria-label': 'Uso y detalles de los bots',
               className: 'min-w-0 w-full flex flex-col gap-2',
               children: [
                 selectedEntry && selectedIndex < 0
@@ -2583,7 +2585,7 @@ function OfficePage({ ctx, prefs }) {
                 selectedEntry
                   ? jsx(OfficeDetailPanel, { key: selectedEntry.profile, entry: selectedEntry, onClose: () => setSelectedProfile(null) })
                   : selectedProfile
-                    ? jsx('p', { className: 'text-xs text-[var(--ui-text-tertiary)]', children: 'The selected profile is no longer in the backend response.' })
+                    ? jsx('p', { className: 'text-xs text-[var(--ui-text-tertiary)]', children: 'El bot seleccionado ya no aparece en el servidor.' })
                     : null,
                 jsx(OfficeLeaderboard, { entries, selectedProfile, onSelect: pick }),
               ],
@@ -2608,8 +2610,8 @@ function OfficePage({ ctx, prefs }) {
           jsx('span', {
             className: 'text-xs text-[var(--ui-text-tertiary)]',
             children:
-              'Isometric 2D · click a desk to inspect · ⌘/Ctrl + scroll to zoom · ' +
-              'refreshes every ' + pollSeconds + 's',
+              'Vista isométrica · clic en un escritorio para ver detalles · ⌘/Ctrl + rueda para zoom · ' +
+              'se actualiza cada ' + pollSeconds + ' s',
           }),
         ],
       }),
@@ -2650,7 +2652,7 @@ export default {
     c.register({
       id: 'nav',
       area: SIDEBAR_NAV_AREA,
-      data: { path: OFFICE_PATH, label: 'Office', codicon: 'home' },
+      data: { path: OFFICE_PATH, label: 'Oficina', codicon: 'home' },
     })
     // Status-bar chip: the always-mounted summary, and the poller that feeds
     // the optional state-change notifications.
@@ -2665,8 +2667,8 @@ export default {
       area: PALETTE_AREA,
       data: {
         id: 'office-3d.open.row',
-        label: 'Open Office 3D',
-        keywords: ['office', 'profiles', 'agents', 'busy', 'desk'],
+        label: 'Abrir Office 3D',
+        keywords: ['oficina', 'office', 'profiles', 'agents', 'busy', 'desk'],
         // Render the live keybind combo as the row's hotkey hint.
         action: 'office-3d.open',
         run: openOffice,
@@ -2677,7 +2679,7 @@ export default {
       area: KEYBINDS_AREA,
       data: {
         id: 'office-3d.open',
-        label: 'Open Office 3D',
+        label: 'Abrir Office 3D',
         category: 'view',
         defaults: ['mod+shift+o'],
         run: openOffice,
